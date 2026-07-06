@@ -11,27 +11,42 @@ const Job = require("./Job");
 // Middleware
 app.use(express.json());
 
-// Sample Data
-let jobs = [
-    {
-        id: 1,
-        company: "Google",
-        role: "SDE",
-        status: "Applied"
-    },
-    {
-        id: 2,
-        company: "Microsoft",
-        role: "Frontend Developer",
-        status: "Interview"
-    }
-];
+
 app.get("/jobs", async (req, res) => {
     try {
-        const jobs = await Job.find();
-        res.json(jobs);
+        const { status } = req.query;
+
+        let jobs;
+
+        if (status) {
+            jobs = await Job.find({ status: status });
+        } else {
+            jobs = await Job.find();
+        }
+
+        res.status(200).json(jobs);
+
     } catch (error) {
-        res.status(500).json({
+        res.status(400).json({
+            message: error.message
+        });
+    }
+});
+
+app.get("/jobs/:id", async (req, res) => {
+    try {
+        const job = await Job.findById(req.params.id);
+
+        if (!job) {
+            return res.status(404).json({
+                message: "Job not found"
+            });
+        }
+
+        res.status(200).json(job);
+
+    } catch (error) {
+        res.status(400).json({
             message: error.message
         });
     }
