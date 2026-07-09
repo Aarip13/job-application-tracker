@@ -2,10 +2,12 @@ require("dotenv").config();
 require("./database");
 
 const express = require("express");
-
+const jwt = require("jsonwebtoken");
 const app = express();
 const PORT = 5000;
 const Job = require("./Job");
+const User = require("./User");
+const bcrypt = require("bcryptjs");
 
 
 // Middleware
@@ -109,6 +111,81 @@ app.delete("/jobs/:id", async (req, res) => {
         });
     } catch (error) {
         res.status(400).json({
+            message: error.message
+        });
+    }
+});
+
+app.post("/auth/register", async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+
+        const existingUser = await User.findOne({ email: email });
+
+        if (existingUser) {
+            return res.status(400).json({
+                message: "User already exists"
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newUser = new User({
+            name: name,
+            email: email,
+            password: hashedPassword
+        });
+
+        const savedUser = await newUser.save();
+
+        res.status(201).json({
+            message: "User registered successfully",
+            userId: savedUser._id
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: error.message
+        });
+    }
+});
+
+app.post("/auth/login", async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        const user = await User.findOne({ email: email });
+
+        if (!user) {
+            return res.status(400).json({
+                message: "Invalid email or password"
+            });
+        }
+
+        const isPasswordCorrect = await bcrypt.compare(
+            password,
+            user.password
+        );
+
+        if (!isPasswordCorrect) {
+            return res.status(400).json({
+                message: "Invalid email or password"
+            });
+        }
+
+        const token = jwt.sign(
+            { userId: user._id },
+            process.env.JWT_SECRET,
+            { expiresIn: "1h" }
+        );
+
+        res.status(200).json({
+            message: "Login successful",
+            token: token
+        });
+
+    } catch (error) {
+        res.status(500).json({
             message: error.message
         });
     }
