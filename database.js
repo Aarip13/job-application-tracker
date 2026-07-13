@@ -11,6 +11,6 @@ mongoose.connect(process.env.MONGO_URI)
     });*/
     const mongoose = require("mongoose");
 
-mongoose.connect("mongodb://127.0.0.1:27017/jobTracker")
+mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("MongoDB Connected"))
     .catch((error) => console.log(error));
