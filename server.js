@@ -4,32 +4,38 @@ require("./database");
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 const Job = require("./Job");
 const User = require("./User");
+const cors = require("cors");
 const bcrypt = require("bcryptjs");
+const authMiddleware = require("./authMiddleware");
 
 
 // Middleware
 app.use(express.json());
+app.use(cors());
+app.use("/jobs", authMiddleware);
 
 
 app.get("/jobs", async (req, res) => {
     try {
         const { status } = req.query;
 
-        let jobs;
+        const filter = {
+            userId: req.user.id
+        };
 
         if (status) {
-            jobs = await Job.find({ status: status });
-        } else {
-            jobs = await Job.find();
+            filter.status = status;
         }
+
+        const jobs = await Job.find(filter);
 
         res.status(200).json(jobs);
 
     } catch (error) {
-        res.status(400).json({
+        res.status(500).json({
             message: error.message
         });
     }
@@ -37,7 +43,10 @@ app.get("/jobs", async (req, res) => {
 
 app.get("/jobs/:id", async (req, res) => {
     try {
-        const job = await Job.findById(req.params.id);
+        const job = await Job.findOne({
+            _id: req.params.id,
+            userId: req.user.id
+        });
 
         if (!job) {
             return res.status(404).json({
@@ -61,7 +70,8 @@ app.post("/jobs", async (req, res) => {
             role: req.body.role,
             status: req.body.status,
             notes: req.body.notes,
-            link: req.body.link
+            link: req.body.link,
+            userId: req.user.id
         });
 
         const savedJob = await newJob.save();
@@ -76,10 +86,18 @@ app.post("/jobs", async (req, res) => {
 
 app.put("/jobs/:id", async (req, res) => {
     try {
-        const updatedJob = await Job.findByIdAndUpdate(
-            req.params.id,
-            { status: req.body.status },
-            { new: true, runValidators: true }
+        const updatedJob = await Job.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                userId: req.user.id
+            },
+            {
+                status: req.body.status
+            },
+            {
+                new: true,
+                runValidators: true
+            }
         );
 
         if (!updatedJob) {
@@ -88,7 +106,8 @@ app.put("/jobs/:id", async (req, res) => {
             });
         }
 
-        res.json(updatedJob);
+        res.status(200).json(updatedJob);
+
     } catch (error) {
         res.status(400).json({
             message: error.message
@@ -98,7 +117,10 @@ app.put("/jobs/:id", async (req, res) => {
 
 app.delete("/jobs/:id", async (req, res) => {
     try {
-        const deletedJob = await Job.findByIdAndDelete(req.params.id);
+        const deletedJob = await Job.findOneAndDelete({
+            _id: req.params.id,
+            userId: req.user.id
+        });
 
         if (!deletedJob) {
             return res.status(404).json({
@@ -106,9 +128,10 @@ app.delete("/jobs/:id", async (req, res) => {
             });
         }
 
-        res.json({
+        res.status(200).json({
             message: "Job deleted successfully"
         });
+
     } catch (error) {
         res.status(400).json({
             message: error.message

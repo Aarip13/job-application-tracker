@@ -28,7 +28,13 @@ const jobSchema = new mongoose.Schema({
 
     link: {
         type: String
-    }
+    },
+
+    userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: "User"
+}
 });
 
 const Job = mongoose.model("Job", jobSchema);
